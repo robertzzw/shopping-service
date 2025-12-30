@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shopping.mapper.ProductSkuMapper">
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.shopping.entity.ProductSku">
+        <id column="sku_id" property="skuId" jdbcType="BIGINT" />
+        <result column="sku_code" property="skuCode" jdbcType="VARCHAR" />
+        <result column="product_id" property="productId" jdbcType="BIGINT" />
+        <result column="sku_name" property="skuName" jdbcType="VARCHAR" />
+        <result column="price" property="price" jdbcType="DECIMAL" />
+        <result column="stock_quantity" property="stockQuantity" jdbcType="INTEGER" />
+        <result column="attributes" property="attributes" jdbcType="VARCHAR" />
+        <result column="status" property="status" jdbcType="TINYINT" />
+        <result column="created_time" property="createdTime" jdbcType="TIMESTAMP" />
+        <result column="updated_time" property="updatedTime" jdbcType="TIMESTAMP" />
+        <!-- 非数据库字段（存储过程返回） -->
+        <result property="resultMessage" column="result_message"/>
+    </resultMap>
+    <!-- SQL片段：所有字段（用于SELECT查询） -->
+    <sql id="base_column_list">
+        sku_id, sku_code, product_id, sku_name, price, stock_quantity,
+        attributes, status, created_time, updated_time
+    </sql>
+    <!-- SQL片段：不包含自增id（用于插入语句） -->
+    <sql id="insert_column_list">
+        sku_code, product_id, sku_name, price, stock_quantity,
+        attributes, status, created_time, updated_time
+    </sql>
+    <select id="selectSkuForUpdate" resultType="com.shopping.entity.ProductSku">
+        select <include refid="base_column_list" /> from product_sku where sku_id = #{skuId} for update
+    </select>
+
+    <update id="updateStockById">
+        update product_sku set stock_quantity = stock_quantity - #{quantity}
+        where sku_id = #{skuId} and stock_quantity >= #{quantity}
+    </update>
+    <!--使用存储过程更新库存,并返回更新后的数据; 或使用returning子句返回(需要MySQL8.0.14以上)-->
+    <select id="subtractStockAndReturn" statementType="CALLABLE" resultMap="BaseResultMap">
+        call subtract_stock_and_return(
+            #{skuId, mode=IN, jdbcType=BIGINT},
+            #{quantity, mode=IN, jdbcType=INTEGER},
+            #{version, mode=IN, jdbcType=BIGINT}
+        )
+    </select>
+</mapper>
