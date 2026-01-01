@@ -1,11 +1,15 @@
 package com.shopping.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.shopping.dto.response.ApiResponse;
 import com.shopping.dto.response.PageResponse;
 import com.shopping.dto.response.SettlementDetail;
 import com.shopping.dto.response.SettlementResult;
 import com.shopping.entity.DailySettlement;
+import com.shopping.exception.BusinessException;
+import com.shopping.exception.ErrorCode;
 import com.shopping.service.SettlementService;
 import com.shopping.task.SettlementTask;
 import io.swagger.annotations.Api;
@@ -52,13 +56,25 @@ public class SettlementController {
     }
 
     @PostMapping("/merchant/resettle")
-    @ApiOperation("重新结算(单个商家)")
-    public ApiResponse<SettlementDetail> resettlement(
+    @ApiOperation(value = "重新结算",
+            notes = "如果不传递商家id,则重新结算所有商家, 先删除指定日期已有的记录,再重新结算")
+    public ApiResponse<?> resettlement(
             @RequestParam(required = false) Long merchantId,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate settlementDate) {
         log.info("重新结算: merchantId={}", merchantId);
         if (settlementDate == null) {
             settlementDate = LocalDate.now().minusDays(1);
+        }
+        if (merchantId == null){
+            LambdaQueryWrapper<DailySettlement> lambdaWrapper = new LambdaQueryWrapper<>();
+            lambdaWrapper.eq(DailySettlement::getSettlementDate, settlementDate);
+            try{
+                int delete = settlementService.getBaseMapper().delete(lambdaWrapper);
+            }catch (Exception e){
+                throw new BusinessException(ErrorCode.OPERATION_FAILED, "删除原结算记录失败");
+            }
+            SettlementResult result = settlementService.executeDailySettlement(settlementDate);
+            return ApiResponse.success(result);
         }
         SettlementDetail detail = settlementService.resettlement(merchantId, settlementDate);
         return ApiResponse.success(detail);

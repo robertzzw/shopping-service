@@ -41,7 +41,7 @@ public class SettlementTask {
                 log.error("每日结算定时任务执行失败，结算日期: {}", settlementDate);
             }
         } catch (Exception e) {
-            log.error("每日结算定时任务执行异常", e);
+            log.error("每日结算定时任务执行异常:", e);
         }
     }
     

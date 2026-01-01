@@ -58,7 +58,7 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
         for (Merchant merchant : merchants) {
             SettlementDetail detail = null;
             try {
-                detail = settleMerchant(merchant, settlementDate);
+                detail = settleMerchant(merchant.getMerchantId(), settlementDate);
                 if (detail != null && detail.getIsSuccess()) {
                     successCount++;
                     successDetails.add(detail);
@@ -100,13 +100,13 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
 
     /** 结算单个商家, 结果匹配,并且保存成功才是成功, 不匹配或异常都算失败 */
     @Transactional(rollbackFor = Exception.class)
-    public SettlementDetail settleMerchant(Merchant merchant, LocalDate settlementDate) {
+    public SettlementDetail settleMerchant(Long merchantId, LocalDate settlementDate) {
         // 检查是否已结算
-        DailySettlement existing = findByMerchantAndDate(merchant.getMerchantId(), settlementDate);
+        DailySettlement existing = findByMerchantAndDate(merchantId, settlementDate);
         SettlementDetail detail = null;
         if (existing != null) {
             log.warn("商家已结算，商家ID: {}, 结算日期: {}, 结算单号: {}", 
-                    merchant.getMerchantId(), settlementDate, existing.getSettlementNo());
+                    merchantId, settlementDate, existing.getSettlementNo());
             detail = new SettlementDetail();
             BeanUtil.copyProperties(existing, detail);
             detail.setMatchDescription("已结算过");
@@ -114,12 +114,12 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
             return detail;
         }
         // 从订单记录表里,计算指定日期的订单净销售额
-        BigDecimal paidAmount = calculatePaidAmount(merchant.getMerchantId(), settlementDate);
-        BigDecimal refundAmount = calculateRefundAmount(merchant.getMerchantId(), settlementDate);
+        BigDecimal paidAmount = calculatePaidAmount(merchantId, settlementDate);
+        BigDecimal refundAmount = calculateRefundAmount(merchantId, settlementDate);
         BigDecimal soldAmount = paidAmount.subtract(refundAmount);
         
         // 从商家余额流水记录表里, 统计商家同一日期内的订单净收入,交易类型为3和4的总金额(即订单收入和订单退款)
-        BigDecimal netIncome = transactionMapper.calculateMerchantNetIncome(merchant.getMerchantId(), settlementDate);
+        BigDecimal netIncome = transactionMapper.calculateMerchantNetIncome(merchantId, settlementDate);
         // 验证是否匹配
         boolean isMatched = false;
         String matchDescription = "不匹配";
@@ -143,7 +143,7 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
         // 创建结算记录
         DailySettlement settlement = new DailySettlement();
         settlement.setSettlementNo(settlementNo);
-        settlement.setMerchantId(merchant.getMerchantId());
+        settlement.setMerchantId(merchantId);
         settlement.setSettlementDate(settlementDate);
         settlement.setPaidAmount(paidAmount);
         settlement.setRefundAmount(refundAmount);
@@ -158,7 +158,7 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
         if (saveSuccess) {
             if (isMatched){
                 log.info("商家结算成功，商家ID: {}, 结算日期: {}, 结算单号: {}, 净销售额: {}, 账户净收入: {}, 匹配: {}",
-                        merchant.getMerchantId(), settlementDate, settlementNo, soldAmount, netIncome, isMatched);
+                        merchantId, settlementDate, settlementNo, soldAmount, netIncome, isMatched);
                 detail.setIsSuccess(true);
             }
         }else {
@@ -186,11 +186,10 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
             }
         }
         // 重新结算
-        Merchant merchant = merchantService.findById(merchantId);
-        SettlementDetail detail = settleMerchant(merchant, settlementDate);
+        SettlementDetail detail = settleMerchant(merchantId, settlementDate);
         if (detail.getIsSuccess()) {
             log.info("重新结算成功，结算ID: {}, 商家ID: {}, 结算日期: {}",
-                    settlement.getSettlementId(), merchant.getMerchantId(), settlement.getSettlementDate());
+                    detail.getSettlementId(), merchantId, settlement.getSettlementDate());
 
         }
         return detail;
