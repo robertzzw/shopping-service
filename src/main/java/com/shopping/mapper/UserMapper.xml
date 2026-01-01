@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shopping.mapper.UserMapper">
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.shopping.entity.User">
+        <id column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="email" property="email" jdbcType="VARCHAR"/>
+        <result column="phone" property="phone" jdbcType="VARCHAR"/>
+        <result column="account_balance" property="accountBalance" jdbcType="DECIMAL"/>
+        <result column="balance_version" property="balanceVersion" jdbcType="BIGINT"/>
+        <result column="user_type" property="userType" jdbcType="TINYINT"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="created_time" property="createdTime" jdbcType="TIMESTAMP"/>
+        <result column="updated_time" property="updatedTime" jdbcType="TIMESTAMP"/>
+        <!-- 非数据库字段（存储过程返回） -->
+        <result property="resultMessage" column="result_message"/>
+    </resultMap>
+
+    <!-- 包含所有字段的SQL片段 -->
+    <sql id="Base_Column_List">
+        user_id, username, email, phone, account_balance, balance_version, user_type,
+        status, created_time, updated_time
+    </sql>
+
+    <update id="deductUserBalance">
+        update `user` set account_balance = account_balance - #{amount}
+        where user_id = #{userId} and account_balance >= #{amount}
+    </update>
+    <select id="selectUserForUpdate" resultType="com.shopping.entity.User">
+        select * from `user` where user_id = #{userId} for update
+    </select>
+
+    <!--使用存储过程更新,并返回更新后的数据; 或使用returning子句返回(需要MySQL8.0.14以上)-->
+    <select id="updateBalanceAndReturn" statementType="CALLABLE" resultMap="BaseResultMap">
+        call update_user_balance_and_return(
+            #{userId, mode=IN, jdbcType=BIGINT},
+            #{amount, mode=IN, jdbcType=INTEGER},
+            #{operationType, mode=IN, jdbcType=VARCHAR}
+        )
+    </select>
+</mapper>
