@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 @ApiModel(description = "商品SKU响应")
 public class ProductSkuResponse implements Serializable {
     private static final long serialVersionUID = 1L;
-
     @ApiModelProperty(value = "SKU ID")
     private Long skuId;
 
@@ -33,6 +32,9 @@ public class ProductSkuResponse implements Serializable {
 
     @ApiModelProperty(value = "库存数量")
     private Integer stockQuantity;
+
+    @ApiModelProperty(value = "库存版本")
+    private Long stockVersion;
 
     @ApiModelProperty(value = "SKU属性")
     private String attributes;

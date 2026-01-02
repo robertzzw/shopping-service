@@ -97,14 +97,6 @@ public class MerchantController {
         return ApiResponse.success(response);
     }
 
-    @GetMapping("/{merchantId}/balance")
-    @ApiOperation("查询商家余额")
-    public ApiResponse<BigDecimal> getBalance(@PathVariable Long merchantId) {
-        log.info("查询商家余额: merchantId={}", merchantId);
-        BigDecimal balance = merchantService.getBalance(merchantId);
-        return ApiResponse.success(balance);
-    }
-
     @PostMapping("/balance/add")
     @ApiOperation("更新商家余额")
     public ApiResponse<Boolean> addBalance(@RequestBody UpdateBalanceRequest req) {

@@ -194,12 +194,6 @@ public class MerchantServiceImpl extends ServiceImpl<MerchantMapper, Merchant> i
     }
 
     @Override
-    public BigDecimal getBalance(Long merchantId) {
-        Merchant merchant = this.findById(merchantId);
-        return merchant.getAccountBalance();
-    }
-
-    @Override
     public void validateMerchantStatus(Merchant merchant) {
         Validator.notNull(merchant, "商家不能为空");
         if (!StatusEnum.ENABLED.getCode().equals(merchant.getStatus())) {

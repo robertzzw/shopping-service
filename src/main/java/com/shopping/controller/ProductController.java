@@ -154,6 +154,17 @@ public class ProductController {
         return ApiResponse.success(sku);
     }
 
+    @PostMapping("/skus/{skuId}/stock/adjust")
+    @ApiOperation("调整库存")
+    public ApiResponse<Boolean> adjustStock(
+            @PathVariable Long skuId,
+            @RequestParam @Min(value = 0, message = "库存数量不能为负数") Integer quantity,
+            @RequestParam(required = false) String remark) {
+        log.info("调整库存: skuId={}, quantity={}", skuId, quantity);
+        boolean success = productSkuService.adjustStock(skuId, quantity, remark);
+        return ApiResponse.success(success);
+    }
+
     @PutMapping("/skus/{skuId}")
     @ApiOperation("更新SKU")
     public ApiResponse<ProductSkuResponse> updateSku(
@@ -212,17 +223,6 @@ public class ProductController {
     public ApiResponse<Boolean> disableSku(@PathVariable Long skuId) {
         log.info("禁用SKU: skuId={}", skuId);
         boolean success = productSkuService.disableSku(skuId);
-        return ApiResponse.success(success);
-    }
-
-    @PostMapping("/skus/{skuId}/stock/adjust")
-    @ApiOperation("调整库存")
-    public ApiResponse<Boolean> adjustStock(
-            @PathVariable Long skuId,
-            @RequestParam @Min(value = 0, message = "库存数量不能为负数") Integer quantity,
-            @RequestParam(required = false) String remark) {
-        log.info("调整库存: skuId={}, quantity={}", skuId, quantity);
-        boolean success = productSkuService.adjustStock(skuId, quantity, remark);
         return ApiResponse.success(success);
     }
 

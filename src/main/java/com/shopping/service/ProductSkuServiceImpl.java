@@ -37,13 +37,11 @@ public class ProductSkuServiceImpl extends ServiceImpl<ProductSkuMapper, Product
     private InventoryChangeService inventoryChangeService;
     @Autowired
     private ProductSkuMapper skuMapper;
-
     @Override
     public ProductSku findById(Long skuId) {
         Validator.notNull(skuId, "SKU ID不能为空");
         return this.getById(skuId);
     }
-
     @Override
     public ProductSku selectSkuForUpdate(Long id) {
         return skuMapper.selectSkuForUpdate(id);
@@ -78,6 +76,7 @@ public class ProductSkuServiceImpl extends ServiceImpl<ProductSkuMapper, Product
         return sku;
     }
 
+    /** 乐观锁扣减库存 */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean subtractStock(Long skuId, Integer quantity, Long stockVersion,
@@ -98,9 +97,9 @@ public class ProductSkuServiceImpl extends ServiceImpl<ProductSkuMapper, Product
                     return false;
                 }
             }
-            //随机等待一段时间，避免同时重试50-250ms
+            //随机等待一段时间，避免同时重试50-150ms
             try {
-                Thread.sleep(50 + new Random().nextInt(200));
+                Thread.sleep((50 + new Random().nextInt(100)) * i);
             } catch (InterruptedException e) {
                 log.info("重试被中断", e);
                 return false;
@@ -235,14 +234,52 @@ public class ProductSkuServiceImpl extends ServiceImpl<ProductSkuMapper, Product
     }
 
     /**
+     * 调整库存
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean adjustStock(Long skuId, Integer quantity, String remark) {
+        Validator.notNull(skuId, "SKU ID不能为空");
+        Validator.notNull(quantity, "数量不能为空");
+
+        ProductSku sku = this.findById(skuId);
+        Integer oldStock = sku.getStockQuantity();
+        Integer newStock = quantity; // 设置为指定数量
+
+        if (newStock < 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "库存数量不能为负数");
+        }
+
+        sku.setStockQuantity(newStock);
+        boolean updateSuccess = this.updateById(sku);
+
+        if (updateSuccess) {
+            // 记录库存变更
+            InventoryChange inventoryChange = new InventoryChange();
+            inventoryChange.setSkuId(skuId);
+            inventoryChange.setChangeType(3); // 调整库存
+            inventoryChange.setChangeQuantity(newStock - oldStock);
+            inventoryChange.setStockBefore(oldStock);
+            inventoryChange.setStockAfter(newStock);
+            inventoryChange.setRelatedType("STOCK_ADJUST");
+            inventoryChange.setRemark(remark != null ? remark : "调整库存");
+            inventoryChange.setCreatedTime(java.time.LocalDateTime.now());
+
+            inventoryChangeService.save(inventoryChange);
+
+            log.info("调整库存成功，SKU ID: {}, 原库存: {}, 新库存: {}, 变更数量: {}",
+                    skuId, oldStock, newStock, newStock - oldStock);
+        }
+
+        return updateSuccess;
+    }
+
+    /**
      * 更新SKU
      */
     @Transactional(rollbackFor = Exception.class)
     public ProductSkuResponse updateSku(Long skuId, ProductSkuUpdateRequest request) {
         log.info("更新SKU: skuId={}, request={}", skuId, request);
-
         ProductSku sku = this.findById(skuId);
-
         // 更新字段
         if (request.getSkuName() != null) {
             sku.setSkuName(request.getSkuName());
@@ -357,7 +394,6 @@ public class ProductSkuServiceImpl extends ServiceImpl<ProductSkuMapper, Product
     @Transactional(rollbackFor = Exception.class)
     public boolean enableSku(Long skuId) {
         log.info("启用SKU: skuId={}", skuId);
-
         ProductSku sku = this.findById(skuId);
         sku.setStatus(StatusEnum.ENABLED.getCode());
 
@@ -365,7 +401,6 @@ public class ProductSkuServiceImpl extends ServiceImpl<ProductSkuMapper, Product
         if (updateSuccess) {
             log.info("启用SKU成功，SKU ID: {}", skuId);
         }
-
         return updateSuccess;
     }
 
@@ -375,7 +410,6 @@ public class ProductSkuServiceImpl extends ServiceImpl<ProductSkuMapper, Product
     @Transactional(rollbackFor = Exception.class)
     public boolean disableSku(Long skuId) {
         log.info("禁用SKU: skuId={}", skuId);
-
         ProductSku sku = this.findById(skuId);
         sku.setStatus(StatusEnum.DISABLED.getCode());
 
@@ -383,47 +417,6 @@ public class ProductSkuServiceImpl extends ServiceImpl<ProductSkuMapper, Product
         if (updateSuccess) {
             log.info("禁用SKU成功，SKU ID: {}", skuId);
         }
-
-        return updateSuccess;
-    }
-
-    /**
-     * 调整库存
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public boolean adjustStock(Long skuId, Integer quantity, String remark) {
-        Validator.notNull(skuId, "SKU ID不能为空");
-        Validator.notNull(quantity, "数量不能为空");
-
-        ProductSku sku = this.findById(skuId);
-        Integer oldStock = sku.getStockQuantity();
-        Integer newStock = quantity; // 设置为指定数量
-
-        if (newStock < 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "库存数量不能为负数");
-        }
-
-        sku.setStockQuantity(newStock);
-        boolean updateSuccess = this.updateById(sku);
-
-        if (updateSuccess) {
-            // 记录库存变更
-            InventoryChange inventoryChange = new InventoryChange();
-            inventoryChange.setSkuId(skuId);
-            inventoryChange.setChangeType(3); // 调整库存
-            inventoryChange.setChangeQuantity(newStock - oldStock);
-            inventoryChange.setStockBefore(oldStock);
-            inventoryChange.setStockAfter(newStock);
-            inventoryChange.setRelatedType("STOCK_ADJUST");
-            inventoryChange.setRemark(remark != null ? remark : "调整库存");
-            inventoryChange.setCreatedTime(java.time.LocalDateTime.now());
-
-            inventoryChangeService.save(inventoryChange);
-
-            log.info("调整库存成功，SKU ID: {}, 原库存: {}, 新库存: {}, 变更数量: {}",
-                    skuId, oldStock, newStock, newStock - oldStock);
-        }
-
         return updateSuccess;
     }
 }

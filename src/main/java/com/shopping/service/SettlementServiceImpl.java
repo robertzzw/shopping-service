@@ -272,10 +272,8 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
             queryWrapper.ge("settlement_date", startDate);
         }
         
-        if (endDate != null) {
-            queryWrapper.le("settlement_date", endDate);
-        }
-        
+        queryWrapper.le(endDate != null, "settlement_date", endDate);
+
         queryWrapper.orderByDesc("settlement_date");
         Page<DailySettlement> page = new Page<>(pageNum, pageSize);
         

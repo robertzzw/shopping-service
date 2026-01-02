@@ -34,9 +34,7 @@ public interface MerchantService extends IService<Merchant> {
     /** 更新商家余额 */
     boolean updateBalance(Long merchantId, BigDecimal amount,
                           boolean isAdd, Long relatedId, Integer transactionType, String remark);
-    
-    /** 获取商家余额 */
-    BigDecimal getBalance(Long merchantId);
+
     
     /** 验证商家状态 */
     void validateMerchantStatus(Merchant merchant);
