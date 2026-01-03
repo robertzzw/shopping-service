@@ -124,7 +124,9 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
         boolean isMatched = false;
         String matchDescription = "不匹配";
         BigDecimal diffAmount = new BigDecimal("0.00");
-        
+        if (netIncome == null){
+            netIncome = new BigDecimal("0.00");
+        }
         if (soldAmount.compareTo(netIncome) == 0) {
             isMatched = true;
             matchDescription = "匹配（完全相等）";
@@ -206,6 +208,9 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
                 DateUtil.getDayEnd(settlementDate));
         
         List<Order> paidOrders = ordersMapper.selectList(queryWrapper);
+        if (paidOrders == null){
+            return new BigDecimal("0.00");
+        }
         return paidOrders.stream()
                 .map(Order::getTotalAmount)
                 .reduce(new BigDecimal("0.00"), BigDecimal::add);
@@ -221,6 +226,9 @@ public class SettlementServiceImpl extends ServiceImpl<DailySettlementMapper, Da
                 DateUtil.getDayEnd(settlementDate));
         
         List<Order> refundOrders = ordersMapper.selectList(queryWrapper);
+        if (refundOrders == null){
+            return new BigDecimal("0.00");
+        }
         return refundOrders.stream()
                 .map(Order::getTotalAmount)
                 .reduce(new BigDecimal("0.00"), BigDecimal::add);
